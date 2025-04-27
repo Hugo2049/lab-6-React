@@ -24,3 +24,7 @@ Para optar a una nota distinta de 0 deben realizar un juego de memoria. El juego
     (5 puntos) Por utilizar css grid
     (-50 puntos) Si utilizan create-react-app
     (-50 puntos) Si utilizan vite
+
+# Resultado: 
+
+![image](https://github.com/user-attachments/assets/175847b0-8a5c-4909-a3ed-ec0d02bdc7f1)
