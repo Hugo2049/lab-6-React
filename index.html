@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Memoria</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.4/babel.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #6a5acd;
+            --secondary-color: #9370db;
+            --accent-color: #4b0082;
+            --light-color: #e6e6fa;
+            --dark-color: #483d8b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .moves {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 15px;
+            perspective: 1000px;
+        }
+
+        .card {
+            height: 160px;
+            width: 85px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+        }
+
+        .card-front {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background: linear-gradient(45deg, var(--dark-color), var(--accent-color));
+            color: var(--light-color);
+        }
+
+        .victory-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.5s;
+        }
+
+        .restart-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .restart-button:hover {
+            background-color: var(--accent-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .card-icon {
+            font-size: 32px;
+        }
+
+        @media (max-width: 600px) {
+            .game-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .card {
+                height: 80px;
+            }
+            
+            .card-icon {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function MemoryGame() {
+            // los iconos para jugar
+            const cardIcons = [
+                '🚀', '🎮', '🎵', '🎨', 
+                '🏆', '💡', '🌈', '🔥',
+                '🚀', '🎮', '🎵', '🎨', 
+                '🏆', '💡', '🌈', '🔥'
+            ];
+            
+            // los estados para el juego
+            const [cards, setCards] = React.useState([]);
+            const [flippedIndexes, setFlippedIndexes] = React.useState([]);
+            const [matchedPairs, setMatchedPairs] = React.useState([]);
+            const [moves, setMoves] = React.useState(0);
+            const [gameComplete, setGameComplete] = React.useState(false);
+            const [disabled, setDisabled] = React.useState(false);
+            
+            // inicializa el juego al cargar
+            React.useEffect(() => {
+                initializeGame();
+            }, []);
+            
+            // verifica cuando el juego esté completo
+            React.useEffect(() => {
+                if (matchedPairs.length === cardIcons.length / 2) {
+                    setGameComplete(true);
+                }
+            }, [matchedPairs]);
+            
+            // maneja la lógica cuando se voltean cartas
+            React.useEffect(() => {
+                if (flippedIndexes.length === 2) {
+                    setDisabled(true);
+                    
+                    const firstCardIndex = flippedIndexes[0];
+                    const secondCardIndex = flippedIndexes[1];
+                    
+                    if (cards[firstCardIndex].icon === cards[secondCardIndex].icon) {
+                        // si encuentra la coincidencia 
+                        setMatchedPairs([...matchedPairs, cards[firstCardIndex].icon]);
+                        setFlippedIndexes([]);
+                        setDisabled(false);
+                    } else {
+                        // si no hay coincidencia, volver a voltear después de un tiempo
+                        setTimeout(() => {
+                            setFlippedIndexes([]);
+                            setDisabled(false);
+                        }, 1000);
+                    }
+                    
+                    // el contador de movimientos
+                    setMoves(moves + 1);
+                }
+            }, [flippedIndexes]);
+            
+            // inicializa el juego con cartas aleatorias
+            const initializeGame = () => {
+                // crear cartas con íconos y posiciones aleatorias
+                const shuffledCards = [...cardIcons]
+                    .map((icon, index) => ({
+                        id: index,
+                        icon,
+                        isFlipped: false,
+                        isMatched: false
+                    }))
+                    .sort(() => Math.random() - 0.5);
+                
+                setCards(shuffledCards);
+                setFlippedIndexes([]);
+                setMatchedPairs([]);
+                setMoves(0);
+                setGameComplete(false);
+            };
+            
+            // maneja el clic en una carta
+            const handleCardClick = (index) => {
+                // para no permitir clics en cartas ya 
+                if (
+                    disabled ||
+                    flippedIndexes.includes(index) ||
+                    matchedPairs.includes(cards[index].icon) ||
+                    flippedIndexes.length === 2
+                ) {
+                    return;
+                }
+                
+                // agregar la carta al estado de cartas volteadas
+                setFlippedIndexes([...flippedIndexes, index]);
+            };
+            
+            // verifica si una carta debe mostrarse volteada
+            const isCardFlipped = (index) => {
+                return flippedIndexes.includes(index) || matchedPairs.includes(cards[index]?.icon);
+            };
+            
+            //reinicia el juego
+            const restartGame = () => {
+                initializeGame();
+            };
+            
+            return (
+                <div className="container">
+                        <div className="moves">Movimientos: {moves}</div>
+                    <div className="game-grid">
+                        {cards.map((card, index) => (
+                            <div 
+                                key={index}
+                                className={`card ${isCardFlipped(index) ? 'flipped' : ''}`}
+                                onClick={() => handleCardClick(index)}
+                            >
+                                <div className="card-face card-back"></div>
+                                <div className="card-face card-front">
+                                    <span className="card-icon">{card.icon}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {gameComplete && (
+                        <div className="victory-modal">
+                            <div className="modal-content">
+                                <h2>¡Felicidades!</h2>
+                                <p>Has completado el juego en {moves} movimientos.</p>
+                                <button className="restart-button" onClick={restartGame}>
+                                    Jugar de nuevo
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MemoryGame />);
+    </script>
+</body>
+</html>
